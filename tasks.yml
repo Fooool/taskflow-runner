@@ -1,0 +1,13 @@
+variables:
+  message: "world"
+
+tasks:
+  say_hello:
+    name: "Say Hello"
+    action: hello
+    greeting: "Hello, ${message}"
+  
+  say_goodbye:
+    name: "Say Goodbye"
+    action: command
+    command: echo "Goodbye, ${message}"
