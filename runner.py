@@ -116,7 +116,7 @@ def load_workflow(file_path: str):
 # Main Entry: Run Workflow
 # -----------------------------
 
-def run_workflow(file_path: str = "tasks.yml", task: str = None, dry_run: bool = False, verbose: bool = False, callback=None):
+def run_workflow(file_path: str = "tasks.yml", task: str = None, dry_run: bool = False, verbose: bool = False, callback=None, override_vars: dict = None):
     global tasks, variables, executed_tasks
     executed_tasks = set()
 
@@ -133,7 +133,15 @@ def run_workflow(file_path: str = "tasks.yml", task: str = None, dry_run: bool =
     try:
         workflow = load_workflow(file_path)
         tasks = workflow.get("tasks", {})
+        
         variables = workflow.get("variables", {})
+
+        if override_vars:
+            for key, value in override_vars.items():
+                if key in variables:
+                    log(f"Overriding variable '{key}' with '{value}'")
+                variables[key] = value
+
 
         if task:
             run_task(task, dry_run=dry_run, log=log)
