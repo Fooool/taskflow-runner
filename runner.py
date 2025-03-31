@@ -6,25 +6,18 @@ import logging
 import traceback
 from typing import Any
 
-
 # Setup logging
-
 logger = logging.getLogger("TaskRunner")
 logging.basicConfig(level=logging.INFO, format="%(message)s")
 
-
-# Load Workflow
-
-with open("tasks.yml", "r") as f:
-    workflow = yaml.safe_load(f)
-
-tasks = workflow.get("tasks", {})
-variables = workflow.get("variables", {})
+# Global state (will be initialized in run_workflow)
+tasks = {}
+variables = {}
 executed_tasks = set()
 
-
-
+# -----------------------------
 # Variable Resolution
+# -----------------------------
 
 def resolve_variables(value: Any) -> Any:
     """Resolve ${var} placeholders recursively"""
@@ -36,9 +29,9 @@ def resolve_variables(value: Any) -> Any:
         return {k: resolve_variables(v) for k, v in value.items()}
     return value
 
-
-
+# -----------------------------
 # Load Action Module
+# -----------------------------
 
 def load_action(action_name: str):
     try:
@@ -51,11 +44,13 @@ def load_action(action_name: str):
         traceback.print_exc()
     return None
 
-
-
+# -----------------------------
 # Execute a Task
+# -----------------------------
 
 def run_task(task_name: str, dry_run=False):
+    global executed_tasks
+
     if task_name in executed_tasks:
         return
 
@@ -109,29 +104,57 @@ def run_task(task_name: str, dry_run=False):
             traceback.print_exc()
             raise e
 
+# -----------------------------
+# Load Workflow File
+# -----------------------------
 
+def load_workflow(file_path: str):
+    with open(file_path, "r") as f:
+        return yaml.safe_load(f)
 
-# CLI Entry Point
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Task Flow Runner")
-    parser.add_argument("--task", help="Run only a specific task (and its dependencies)")
-    parser.add_argument("--dry-run", action="store_true", help="Only print what would run")
-    parser.add_argument("--verbose", action="store_true", help="Enable verbose logging")
-    args = parser.parse_args()
+# -----------------------------
+# Main Entry: Run Workflow
+# -----------------------------
 
-    if args.verbose:
+def run_workflow(file_path: str = "tasks.yml", task: str = None, dry_run: bool = False, verbose: bool = False):
+    global tasks, variables, executed_tasks
+    executed_tasks = set()
+
+    if verbose:
         logger.setLevel(logging.DEBUG)
 
     logger.info("\n🚀 Starting Task Execution...\n")
 
     try:
-        if args.task:
-            run_task(args.task, dry_run=args.dry_run)
+        workflow = load_workflow(file_path)
+        tasks = workflow.get("tasks", {})
+        variables = workflow.get("variables", {})
+
+        if task:
+            run_task(task, dry_run=dry_run)
         else:
             for task_name in tasks:
-                run_task(task_name, dry_run=args.dry_run)
+                run_task(task_name, dry_run=dry_run)
 
         logger.info("\n🎉 All Tasks Completed!\n")
+        return variables  # Optional: return the variables collected
     except Exception:
         logger.error("💥 Pipeline failed due to an error.")
+        raise
+
+# -----------------------------
+# CLI Entry Point
+# -----------------------------
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Task Flow Runner")
+    parser.add_argument("--task", help="Run only a specific task (and its dependencies)")
+    parser.add_argument("--dry-run", action="store_true", help="Only print what would run")
+    parser.add_argument("--verbose", action="store_true", help="Enable verbose logging")
+    parser.add_argument("--file", default="tasks.yml", help="YAML file to load tasks from")
+    args = parser.parse_args()
+
+    try:
+        run_workflow(file_path=args.file, task=args.task, dry_run=args.dry_run, verbose=args.verbose)
+    except Exception:
         exit(1)
