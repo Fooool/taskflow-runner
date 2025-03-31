@@ -1,8 +1,8 @@
 # taskflow-runner
 
-> A lightweight, YAML-driven task runner for Python automation, ETL, and data pipelines.
+> A lightweight, YAML-driven task runner for Python automation.
 
-**`taskflow-runner`** lets you define flexible, dependency-aware task workflows using plain YAML and modular Python code. Perfect for running data transformations, CLI workflows, or even lightweight devops pipelines — all in a container-friendly, hackable setup.
+**`taskflow-runner`** lets you define flexible, dependency-aware task workflows using plain YAML and modular Python code. Perfect for running data transformations, CLI workflows or even lightweight devops pipelines all in a hackable setup.
 
 ---
 
@@ -13,7 +13,6 @@
 - Variable substitution: `${var}` syntax in YAML
 - Dry run support (see what would execute)
 - CLI filters to run specific tasks
-- Docker-friendly and portable
 - Minimal dependencies
 
 ---
