@@ -23,3 +23,34 @@
 git clone https://github.com/Fooool/taskflow-runner.git
 cd taskflow-runner
 pip install -r requirements.txt
+```
+
+---
+
+## Usage Examples
+
+### Run an entire workflow from a YAML file
+
+```bash
+python runner.py --file my_pipeline.yml
+```
+
+This will execute all tasks defined in `my_pipeline.yml`, resolving dependencies automatically.
+
+---
+
+### Run a specific task only
+
+```bash
+python runner.py --file my_pipeline.yml --task prepare_data
+```
+
+This will execute the task `prepare_data` and all of its dependencies, if any.
+
+You can also use the `--dry-run` and `--verbose` flags to inspect what would be executed and see detailed output:
+
+```bash
+python runner.py --file my_pipeline.yml --task prepare_data --dry-run --verbose
+```
+
+---
