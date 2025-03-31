@@ -48,7 +48,7 @@ def load_action(action_name: str):
 # Execute a Task
 # -----------------------------
 
-def run_task(task_name: str, dry_run=False):
+def run_task(task_name: str, dry_run=False, log=lambda msg: None):
     global executed_tasks
 
     if task_name in executed_tasks:
@@ -56,22 +56,22 @@ def run_task(task_name: str, dry_run=False):
 
     task = tasks.get(task_name)
     if not task:
-        logger.error(f"❌ Task '{task_name}' not found!")
+        log(f"❌ Task '{task_name}' not found!")
         raise ValueError(f"Task '{task_name}' not defined")
 
     if task.get("disabled", False):
-        logger.info(f"⏭️  Skipping Task: {task_name}")
+        log(f"⏭️  Skipping Task: {task_name}")
         return
 
     display_name = task.get("name", task_name)
 
     # Run dependencies first
     for dep in task.get("dependencies", []):
-        run_task(dep, dry_run=dry_run)
+        run_task(dep, dry_run=dry_run, log=log)
 
     action_name = task.get("action")
     if not action_name:
-        logger.error(f"❌ Task '{task_name}' missing required 'action' key")
+        log(f"❌ Task '{task_name}' missing required 'action' key")
         raise ValueError(f"Task '{task_name}' missing action")
 
     resolved_task = resolve_variables(task)
@@ -80,27 +80,27 @@ def run_task(task_name: str, dry_run=False):
     kwargs = {k: v for k, v in resolved_task.items() if k not in ["action", "dependencies", "name"]}
 
     if dry_run:
-        logger.info(f"🧪 [Dry Run] Would run: {display_name} ({task_name}) [{action_name}]")
+        log(f"🧪 [Dry Run] Would run: {display_name} ({task_name}) [{action_name}]")
         executed_tasks.add(task_name)
         return
 
     if action_func:
         try:
-            logger.info(f"▶️ Running Task: {display_name} ({task_name}) [{action_name}]...")
+            log(f"▶️ Running Task: {display_name} ({task_name}) [{action_name}]...")
             result = action_func(**kwargs)
 
             if isinstance(result, dict):
                 variables.update(result)
-                logger.info(f"✅ Returned variables: {result}")
+                log(f"✅ Returned variables: {result}")
 
             if not result:
                 raise RuntimeError("Task returned failure or empty result")
 
-            logger.info(f"✅ Completed: {display_name} ({task_name})")
+            log(f"✅ Completed: {display_name} ({task_name})")
             executed_tasks.add(task_name)
 
         except Exception as e:
-            logger.error(f"❌ Exception while running task '{task_name}': {e}")
+            log(f"❌ Exception while running task '{task_name}': {e}")
             traceback.print_exc()
             raise e
 
@@ -116,14 +116,19 @@ def load_workflow(file_path: str):
 # Main Entry: Run Workflow
 # -----------------------------
 
-def run_workflow(file_path: str = "tasks.yml", task: str = None, dry_run: bool = False, verbose: bool = False):
+def run_workflow(file_path: str = "tasks.yml", task: str = None, dry_run: bool = False, verbose: bool = False, callback=None):
     global tasks, variables, executed_tasks
     executed_tasks = set()
 
     if verbose:
         logger.setLevel(logging.DEBUG)
 
-    logger.info("\n🚀 Starting Task Execution...\n")
+    def log(msg):
+        logger.info(msg)
+        if callback:
+            callback(msg)
+
+    log("\n🚀 Starting Task Execution...\n")
 
     try:
         workflow = load_workflow(file_path)
@@ -131,15 +136,15 @@ def run_workflow(file_path: str = "tasks.yml", task: str = None, dry_run: bool =
         variables = workflow.get("variables", {})
 
         if task:
-            run_task(task, dry_run=dry_run)
+            run_task(task, dry_run=dry_run, log=log)
         else:
             for task_name in tasks:
-                run_task(task_name, dry_run=dry_run)
+                run_task(task_name, dry_run=dry_run, log=log)
 
-        logger.info("\n🎉 All Tasks Completed!\n")
-        return variables  # Optional: return the variables collected
+        log("\n🎉 All Tasks Completed!\n")
+        return variables
     except Exception:
-        logger.error("💥 Pipeline failed due to an error.")
+        log("💥 Pipeline failed due to an error.")
         raise
 
 # -----------------------------
